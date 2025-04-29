@@ -1,12 +1,13 @@
 package middlewere
 
 import (
+	"bytes"
 	"io"
 	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/TheCodeboy12/internal/helpers"
+	"github.com/TheCodeboy12/bambooWebhook/internal/helpers"
 )
 
 const (
@@ -27,12 +28,14 @@ func ValidateRequest(secret string) func(next http.Handler) http.Handler {
 				http.Error(w, "Missing X-BambooHR-Signature header", http.StatusBadRequest)
 				return
 			}
+			bodyLimited := io.LimitReader(r.Body, 2<<20) // 1MB
 			defer r.Body.Close()
-			body, err := io.ReadAll(r.Body)
+			body, err := io.ReadAll(bodyLimited)
 			if err != nil {
 				http.Error(w, "Error reading body", http.StatusBadRequest)
 				return
 			}
+
 			slog.Debug("Request body", "body", string(body))
 			if !helpers.ValidateTimeStamp(timeStamp[0], float64(maxTimeSkew)) {
 				http.Error(w, "Invalid timestamp", http.StatusBadRequest)
@@ -43,6 +46,8 @@ func ValidateRequest(secret string) func(next http.Handler) http.Handler {
 				http.Error(w, "Invalid signature", http.StatusUnauthorized)
 				return
 			}
+			r.Body = io.NopCloser(bytes.NewBuffer(body))
+
 			next.ServeHTTP(w, r)
 		})
 	}

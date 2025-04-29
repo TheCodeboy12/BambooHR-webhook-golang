@@ -16,5 +16,6 @@ func allHexCharacters(s string) bool {
 			return false
 		}
 	}
+
 	return true
 }

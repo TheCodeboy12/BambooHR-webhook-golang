@@ -6,9 +6,7 @@ import (
 
 	"os"
 
-	"github.com/TheCodeboy12/internal/server/handlers"
-
-	"github.com/TheCodeboy12/internal/server/middlewere"
+	"github.com/TheCodeboy12/bambooWebhook/internal/server/handlers"
 )
 
 func init() {
@@ -47,14 +45,24 @@ func main() {
 		slog.Error("PORT is not set")
 		return
 	}
-
+	cloudProjectId := os.Getenv("CLOUD_PROJECT_ID")
+	if cloudProjectId == "" {
+		slog.Error("CLOUD_PROJECT_ID is not set")
+		return
+	}
+	topicName := os.Getenv("TOPIC_NAME")
+	if topicName == "" {
+		slog.Error("TOPIC_NAME is not set")
+		return
+	}
 	router := http.NewServeMux()
-	router.Handle("POST /", handlers.RootHandler())
+	router.Handle("POST /", handlers.RootHandler(cloudProjectId, topicName))
 	port := ":" + envPort
 
 	srv := &http.Server{
-		Addr:    port,
-		Handler: middlewere.ValidateRequest(bambooSecret)(router),
+		Addr: port,
+		// Handler: middlewere.ValidateRequest(bambooSecret)(router),
+		Handler: router,
 	}
 	slog.Info("Starting server", "port", port)
 	if err := srv.ListenAndServe(); err != nil {
