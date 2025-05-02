@@ -6,7 +6,7 @@ import (
 
 	"os"
 
-	"github.com/TheCodeboy12/bambooWebhook/internal/server/handlers"
+	"github.com/TheCodeboy12/bambooWebhook/internal/server/middlewere"
 )
 
 func init() {
@@ -37,36 +37,38 @@ func init() {
 func main() {
 	bambooSecret := os.Getenv("BAMBOO_SECRET")
 	if bambooSecret == "" {
-		slog.Error("BAMBOO_SECRET is not set")
-		return
+		slog.Error("Env variable missing.", "key", "BAMBOO_SECRET")
+		os.Exit(1)
 	}
 	envPort := os.Getenv("PORT")
 	if envPort == "" {
-		slog.Error("PORT is not set")
-		return
+		slog.Error("Env variable missing PORT is not set")
+		os.Exit(1)
 	}
 	cloudProjectId := os.Getenv("CLOUD_PROJECT_ID")
 	if cloudProjectId == "" {
-		slog.Error("CLOUD_PROJECT_ID is not set")
-		return
+		slog.Error("Env variable missing: CLOUD_PROJECT_ID is not set")
+		os.Exit(1)
 	}
 	topicName := os.Getenv("TOPIC_NAME")
 	if topicName == "" {
-		slog.Error("TOPIC_NAME is not set")
-		return
+		slog.Error("Env variable missing: TOPIC_NAME is not set")
+		os.Exit(1)
 	}
 	router := http.NewServeMux()
-	router.Handle("POST /", handlers.RootHandler(cloudProjectId, topicName))
+	middlewereRouter := http.NewServeMux()
+	middlewereRouter.Handle("POST /{$}",
+		middlewere.ValidateRequest(bambooSecret)(router),
+	)
 	port := ":" + envPort
 
 	srv := &http.Server{
-		Addr: port,
-		// Handler: middlewere.ValidateRequest(bambooSecret)(router),
-		Handler: router,
+		Addr:    port,
+		Handler: middlewere.LoggingMiddleware(middlewereRouter),
 	}
 	slog.Info("Starting server", "port", port)
 	if err := srv.ListenAndServe(); err != nil {
 		slog.Error("Error starting server", "error", err.Error())
-		return
+		os.Exit(1)
 	}
 }
