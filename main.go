@@ -6,6 +6,7 @@ import (
 
 	"os"
 
+	"github.com/TheCodeboy12/bambooWebhook/internal/server/handlers"
 	"github.com/TheCodeboy12/bambooWebhook/internal/server/middlewere"
 )
 
@@ -56,15 +57,15 @@ func main() {
 		os.Exit(1)
 	}
 	router := http.NewServeMux()
-	middlewereRouter := http.NewServeMux()
-	middlewereRouter.Handle("POST /{$}",
-		middlewere.ValidateRequest(bambooSecret)(router),
-	)
+	router.Handle("POST /{$}", handlers.RootHandler(cloudProjectId, topicName))
+
 	port := ":" + envPort
 
 	srv := &http.Server{
-		Addr:    port,
-		Handler: middlewere.LoggingMiddleware(middlewereRouter),
+		Addr: port,
+		Handler: middlewere.LoggingMiddleware(
+			middlewere.ValidateRequest(bambooSecret)(router),
+		),
 	}
 	slog.Info("Starting server", "port", port)
 	if err := srv.ListenAndServe(); err != nil {
